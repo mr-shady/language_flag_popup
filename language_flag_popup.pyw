@@ -21,8 +21,8 @@ FLAG_IMAGES = {
     '0x429': os.path.join(IMAGE_DIR, 'iran.png'),  # Persian
 }
 SHOW_TIME = 0.3  # seconds visible
-SCREEN_WIDTH_PERCENT = 0.6  # 50% of screen width
-ANIMATION_DURATION = 20  # milliseconds for fade in/out
+SCREEN_WIDTH_PERCENT = 0.5  # 50% of screen width
+ANIMATION_DURATION = 10  # milliseconds for fade in/out
 ANIMATION_STEPS = 10  # number of steps in animation
 
 # --- GET CURRENT INPUT LANGUAGE ---
