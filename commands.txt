@@ -1,0 +1,1 @@
+pyinstaller --onefile --noconsole --add-data "images;images" language_flag_popup.pyw
