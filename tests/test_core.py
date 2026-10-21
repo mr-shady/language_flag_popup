@@ -52,6 +52,13 @@ class LanguagePopupTests(unittest.TestCase):
         self.assertLess(funnel.getbbox()[3] - funnel.getbbox()[1], 140)
         self.assertIn('genie', app.ANIMATION_TYPES)
 
+    def test_persian_text_shaping(self):
+        shaped_fa = app.shape_persian("فا")
+        self.assertNotEqual(shaped_fa, "فا")
+        self.assertEqual(len(shaped_fa), 2)
+        shaped_farsi = app.shape_persian("فارسی")
+        self.assertNotEqual(shaped_farsi, "فارسی")
+
     def test_flat_button_invokes_its_command(self):
         try:
             root = app.tk.Tk()

@@ -1,6 +1,6 @@
 [Setup]
 AppName=Language Flag Pop-Up
-AppVersion=9.1.0
+AppVersion=9.2.0
 DefaultDirName={localappdata}\Programs\LanguageFlagPopUp
 DefaultGroupName=LanguageFlagPopUp
 PrivilegesRequired=lowest

@@ -599,6 +599,89 @@ def _load_font(family, weight, size):
             return ImageFont.load_default()
 
 
+PERSIAN_ARABIC_MAP = {
+    'ا': (0xFE8D, 0xFE8E, 0xFE8D, 0xFE8E, False),
+    'آ': (0xFE81, 0xFE82, 0xFE81, 0xFE82, False),
+    'أ': (0xFE83, 0xFE84, 0xFE83, 0xFE84, False),
+    'إ': (0xFE87, 0xFE88, 0xFE87, 0xFE88, False),
+    'ب': (0xFE8F, 0xFE90, 0xFE91, 0xFE92, True),
+    'پ': (0xFB56, 0xFB57, 0xFB58, 0xFB59, True),
+    'ت': (0xFE93, 0xFE94, 0xFE95, 0xFE96, True),
+    'ث': (0xFE97, 0xFE98, 0xFE99, 0xFE9A, True),
+    'ج': (0xFE9B, 0xFE9C, 0xFE9D, 0xFE9E, True),
+    'چ': (0xFB7A, 0xFB7B, 0xFB7C, 0xFB7D, True),
+    'ح': (0xFEA1, 0xFEA2, 0xFEA3, 0xFEA4, True),
+    'خ': (0xFEA5, 0xFEA6, 0xFEA7, 0xFEA8, True),
+    'د': (0xFEA9, 0xFEAA, 0xFEA9, 0xFEAA, False),
+    'ذ': (0xFEAB, 0xFEAC, 0xFEAB, 0xFEAC, False),
+    'ر': (0xFEAD, 0xFEAE, 0xFEAD, 0xFEAE, False),
+    'ز': (0xFEAF, 0xFEB0, 0xFEAF, 0xFEB0, False),
+    'ژ': (0xFB8A, 0xFB8B, 0xFB8A, 0xFB8B, False),
+    'س': (0xFEB1, 0xFEB2, 0xFEB3, 0xFEB4, True),
+    'ش': (0xFEB5, 0xFEB6, 0xFEB7, 0xFEB8, True),
+    'ص': (0xFEB9, 0xFEBA, 0xFEBB, 0xFEBC, True),
+    'ض': (0xFEBD, 0xFEBE, 0xFEBF, 0xFEC0, True),
+    'ط': (0xFEC1, 0xFEC2, 0xFEC3, 0xFEC4, True),
+    'ظ': (0xFEC5, 0xFEC6, 0xFEC7, 0xFEC8, True),
+    'ع': (0xFEC9, 0xFECA, 0xFECB, 0xFECC, True),
+    'غ': (0xFECD, 0xFECE, 0xFECF, 0xFED0, True),
+    'ف': (0xFED1, 0xFED2, 0xFED3, 0xFED4, True),
+    'ق': (0xFED5, 0xFED6, 0xFED7, 0xFED8, True),
+    'ک': (0xFB8E, 0xFB8F, 0xFB90, 0xFB91, True),
+    'ك': (0xFED9, 0xFEDA, 0xFEDB, 0xFEDC, True),
+    'گ': (0xFB92, 0xFB93, 0xFB94, 0xFB95, True),
+    'ل': (0xFEDD, 0xFEDE, 0xFEDF, 0xFEE0, True),
+    'م': (0xFEE1, 0xFEE2, 0xFEE3, 0xFEE4, True),
+    'ن': (0xFEE5, 0xFEE6, 0xFEE7, 0xFEE8, True),
+    'و': (0xFEEE, 0xFEEF, 0xFEEE, 0xFEEF, False),
+    'ه': (0xFEE9, 0xFEEA, 0xFEEB, 0xFEEC, True),
+    'ی': (0xFBFC, 0xFBFD, 0xFBFE, 0xFBFF, True),
+    'ي': (0xFEEF, 0xFEF0, 0xFEF1, 0xFEF2, True),
+    'ئ': (0xFE89, 0xFE8A, 0xFE8B, 0xFE8C, True),
+}
+
+def shape_persian(text):
+    if not any(c in PERSIAN_ARABIC_MAP for c in text):
+        return text
+    chars = list(text)
+    n = len(chars)
+    reshaped = []
+    for i in range(n):
+        c = chars[i]
+        if c not in PERSIAN_ARABIC_MAP:
+            reshaped.append(c)
+            continue
+        iso, fin, ini, med, can_join = PERSIAN_ARABIC_MAP[c]
+        prev_joins = False
+        if i > 0 and chars[i - 1] in PERSIAN_ARABIC_MAP:
+            prev_joins = PERSIAN_ARABIC_MAP[chars[i - 1]][4]
+        next_joins = False
+        if i < n - 1 and chars[i + 1] in PERSIAN_ARABIC_MAP:
+            next_joins = True
+        if prev_joins and next_joins and can_join:
+            form = med
+        elif prev_joins:
+            form = fin
+        elif next_joins and can_join:
+            form = ini
+        else:
+            form = iso
+        reshaped.append(chr(form))
+    result = []
+    i = 0
+    while i < len(reshaped):
+        if reshaped[i] in PERSIAN_ARABIC_MAP or ord(reshaped[i]) > 0xFB00:
+            run = []
+            while i < len(reshaped) and (reshaped[i] in PERSIAN_ARABIC_MAP or ord(reshaped[i]) > 0xFB00 or reshaped[i] in ' \t'):
+                run.append(reshaped[i])
+                i += 1
+            result.extend(reversed(run))
+        else:
+            result.append(reshaped[i])
+            i += 1
+    return ''.join(result)
+
+
 # ─────────────────────────────────────────────
 # BASE IMAGE RENDERING  (cached, supersampled, real alpha)
 # ─────────────────────────────────────────────
@@ -608,6 +691,7 @@ SS = 2  # supersample factor for crisp anti-aliased edges
 
 def _render_text_base(lang_id, cfg):
     text = LANGUAGE_TEXT.get(lang_id, '??')
+    text = shape_persian(text)
     fs = max(8, int(cfg.get('font_size', 180))) * SS
     family = cfg.get('text_font_family', 'Segoe UI')
     weight = cfg.get('text_font_weight', 'bold')
