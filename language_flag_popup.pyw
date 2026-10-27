@@ -5,8 +5,10 @@ import json
 import math
 import threading
 import ctypes
+import webbrowser
+from functools import lru_cache
 from ctypes import wintypes
-from queue import Queue
+from queue import Queue, Empty
 from collections import namedtuple
 
 from PIL import Image, ImageDraw, ImageFont, ImageFilter, ImageChops, ImageTk
@@ -14,7 +16,6 @@ import tkinter as tk
 from tkinter import colorchooser, filedialog, messagebox
 import customtkinter as ctk
 from pystray import Icon, Menu, MenuItem
-from PIL import Image as PILImage
 
 # ─────────────────────────────────────────────
 # PILLOW COMPAT (constants moved under Image.Resampling in Pillow 9.1+)
@@ -588,6 +589,7 @@ def _find_font_file(family, weight='regular'):
     return os.path.join(win_fonts, 'arial.ttf')
 
 
+@lru_cache(maxsize=32)
 def _load_font(family, weight, size):
     try:
         return ImageFont.truetype(_find_font_file(family, weight), size)
@@ -768,19 +770,35 @@ def _render_text_base(lang_id, cfg):
     return img
 
 
+def _mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except OSError:
+        return 0.0
+
+
+@lru_cache(maxsize=16)
+def _open_flag(path, _mtime_key):
+    """Decode a flag image once; the mtime key invalidates the cache when the file changes."""
+    try:
+        with Image.open(path) as im:
+            return im.convert('RGBA')
+    except Exception as e:
+        debug_print(f"flag open: {e}")
+        return None
+
+
 def _render_flag_base(lang_id, cfg, monitor_w):
     path = FLAG_IMAGES.get(lang_id)
     if not path or not os.path.exists(path):
         return None
     pct = max(1, min(100, int(cfg.get('screen_width_percent', 30)))) / 100.0
     w = max(1, int(monitor_w * pct))
-    try:
-        im = Image.open(path).convert('RGBA')
-    except Exception as e:
-        debug_print(f"flag open: {e}")
+    src = _open_flag(path, _mtime(path))
+    if src is None:
         return None
-    h = max(1, int(w * im.height / im.width))
-    im = im.resize((w, h), RESAMPLE_LANCZOS)
+    h = max(1, int(w * src.height / src.width))
+    im = src.resize((w, h), RESAMPLE_LANCZOS)
     opacity = max(0.05, min(1.0, float(cfg.get('flag_opacity', 1.0))))
     radius = max(0, int(cfg.get('flag_corner_radius', 18)))
     radius = min(radius, min(w, h) // 2)
@@ -1871,14 +1889,13 @@ class SettingsWindow:
 
     # ---- About ----
     def _build_about_view(self):
-        import webbrowser
         v = tk.Frame(self.frame, bg=THEME['bg'])
         self.views['about'] = v
 
         c = self._card(v, "About")
         
         about_text = ("See the active keyboard language the moment it changes.\n"
-                      "Designed and developed by mr.5hady")
+                      "Developed by Reza Nemati")
         
         tk.Label(c, text=about_text, font=F(10), bg=THEME['card'], 
                  fg=THEME['muted'], justify=tk.LEFT).pack(anchor='w', pady=(0, 16))
@@ -1886,6 +1903,12 @@ class SettingsWindow:
         links_container = tk.Frame(c, bg=THEME['card'])
         links_container.pack(anchor='w', fill=tk.X)
         
+        # Website Link
+        web_lbl = tk.Label(links_container, text="reza-nemati.ir", font=F(10, 'bold'),
+                           bg=THEME['card'], fg=THEME['accent'], cursor='hand2')
+        web_lbl.pack(side=tk.LEFT, padx=(0, 20))
+        web_lbl.bind('<Button-1>', lambda e: webbrowser.open("https://reza-nemati.ir"))
+
         # GitHub Link
         gh_lbl = tk.Label(links_container, text="GitHub", font=F(10, 'bold'), 
                           bg=THEME['card'], fg=THEME['accent'], cursor='hand2')
@@ -2139,10 +2162,10 @@ def check_lang_change():
                                (mode == 'text' and current_lang in LANGUAGE_TEXT))
 
                 if has_content:
-                    while not flag_queue.empty():
+                    while True:
                         try:
                             flag_queue.get_nowait()
-                        except Exception:
+                        except Empty:
                             break
                     flag_queue.put((current_lang, cfg_source))
         except Exception as e:
@@ -2156,10 +2179,10 @@ def check_lang_change():
 def process_queue():
     try:
         latest = None
-        while not flag_queue.empty():
+        while True:
             try:
                 latest = flag_queue.get_nowait()
-            except Exception:
+            except Empty:
                 break
         if latest and not currently_showing:
             show_on_monitors(latest[0], latest[1])
@@ -2174,11 +2197,11 @@ def process_queue():
 def create_tray_icon():
     if os.path.exists(ICON_FILE):
         try:
-            icon_image = PILImage.open(ICON_FILE)
+            icon_image = Image.open(ICON_FILE)
         except Exception:
-            icon_image = PILImage.new('RGB', (64, 64), color='#5B6CFF')
+            icon_image = Image.new('RGB', (64, 64), color='#5B6CFF')
     else:
-        icon_image = PILImage.new('RGB', (64, 64), color='#5B6CFF')
+        icon_image = Image.new('RGB', (64, 64), color='#5B6CFF')
 
     def open_settings(icon, item):
         def show_settings():
@@ -2208,8 +2231,19 @@ def create_tray_icon():
 root = None
 
 
+def _acquire_single_instance():
+    """Return False when another copy is already running (named mutex)."""
+    try:
+        ctypes.windll.kernel32.CreateMutexW(None, False, "Local\LanguageFlagPopUp_SingleInstance")
+        return ctypes.windll.kernel32.GetLastError() != 183   # ERROR_ALREADY_EXISTS
+    except Exception:
+        return True
+
+
 def main():
     global root
+    if '--settings' not in sys.argv and not _acquire_single_instance():
+        return
     debug_print(f"Starting Language Popup with {len(LANGUAGE_TEXT)} enabled languages")
     root = tk.Tk()
     root.withdraw()
