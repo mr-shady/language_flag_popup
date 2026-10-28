@@ -1,0 +1,466 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Language Flag Pop-Up</title>
+<meta name="description" content="Language Flag Pop-Up — همین که زبان کیبورد عوض شود، پرچمش وسط صفحه ظاهر می‌شود. رایگان و متن‌باز برای ویندوز.">
+<meta property="og:title" content="Language Flag Pop-Up">
+<meta property="og:description" content="زبان کیبورد را قبل از تایپ ببینید. رایگان و متن‌باز برای ویندوز.">
+<meta property="og:image" content="assets/general.png">
+<link rel="icon" href="assets/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;600;800;900&family=JetBrains+Mono:wght@500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #F2F4F7;
+  --surface: #FFFFFF;
+  --ink: #10141C;
+  --muted: #5B6577;
+  --line: #DDE2EA;
+  --accent: #2F6FED;
+  --accent-ink: #FFFFFF;
+  --key: #FFFFFF;
+  --key-edge: #C3CBD8;
+  --screen: #0B1220;
+  --screen-2: #17233A;
+  --radius: 18px;
+  --font: "Vazirmatn", "Segoe UI", Tahoma, sans-serif;
+  --mono: "JetBrains Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A0E15; --surface: #121925; --ink: #EEF2F8; --muted: #8E9BB0;
+    --line: #232D3D; --accent: #4F8CFF; --key: #1C2636; --key-edge: #2C384C;
+    --screen: #05080E; --screen-2: #111B2D;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A0E15; --surface: #121925; --ink: #EEF2F8; --muted: #8E9BB0;
+  --line: #232D3D; --accent: #4F8CFF; --key: #1C2636; --key-edge: #2C384C;
+  --screen: #05080E; --screen-2: #111B2D;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font-family: var(--font); font-size: 17px; line-height: 1.85;
+  -webkit-font-smoothing: antialiased;
+}
+img { max-width: 100%; display: block; }
+a { color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; border-radius: 8px; }
+.wrap { max-width: 1160px; margin: 0 auto; padding: 0 24px; }
+.mono { font-family: var(--mono); direction: ltr; unicode-bidi: isolate; }
+
+/* ---------- top bar ---------- */
+.top { display: flex; align-items: center; justify-content: space-between; padding: 22px 0; }
+.brand { display: flex; align-items: center; gap: 12px; text-decoration: none; font-weight: 800; }
+.brand img { width: 36px; height: 36px; }
+.brand small { font-family: var(--mono); font-weight: 500; font-size: 12px; color: var(--muted); }
+.top nav { display: flex; gap: 22px; font-size: 15px; }
+.top nav a { text-decoration: none; color: var(--muted); }
+.top nav a:hover { color: var(--ink); }
+
+/* ---------- hero ---------- */
+.hero { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; padding: 48px 0 88px; }
+.hero h1 { font-size: clamp(38px, 5.4vw, 66px); line-height: 1.25; font-weight: 900; margin: 0 0 20px; letter-spacing: -0.5px; }
+.hero h1 em { font-style: normal; color: var(--accent); }
+.hero p.lead { font-size: 19px; color: var(--muted); font-weight: 400; margin: 0 0 32px; max-width: 30em; }
+.cta { display: flex; flex-wrap: wrap; gap: 14px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 10px; padding: 14px 26px; border-radius: 14px;
+  font: 800 17px var(--font); text-decoration: none; border: 1px solid var(--line);
+  background: var(--surface); color: var(--ink); transition: transform .15s ease, box-shadow .15s ease;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px -12px rgba(16,20,28,.35); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: transparent; }
+.btn svg { width: 20px; height: 20px; }
+.meta { margin-top: 16px; font-size: 14px; color: var(--muted); }
+
+/* ---------- demo ---------- */
+.demo { position: relative; }
+.screen {
+  position: relative; aspect-ratio: 16 / 10; border-radius: 22px; overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 85% 0%, var(--screen-2), transparent 60%),
+    radial-gradient(80% 80% at 0% 100%, #1B2C4D, transparent 60%),
+    var(--screen);
+  box-shadow: 0 40px 80px -40px rgba(10,20,40,.55), inset 0 0 0 1px rgba(255,255,255,.06);
+}
+.window {
+  position: absolute; inset: 9% 12% 22% 12%; border-radius: 12px; background: rgba(255,255,255,.96);
+  box-shadow: 0 20px 40px -20px rgba(0,0,0,.6); padding: 12% 7% 0; color: #10141C;
+}
+.window::before { /* title bar */
+  content: ""; position: absolute; inset: 0 0 auto 0; height: 13%; border-radius: 12px 12px 0 0;
+  background: #EEF1F5; border-bottom: 1px solid #DDE2EA;
+}
+.typed { font-size: clamp(14px, 1.9vw, 22px); font-weight: 600; min-height: 1.8em; white-space: nowrap; overflow: hidden; }
+.typed .caret { display: inline-block; width: 2px; height: 1.1em; background: var(--accent); vertical-align: -0.15em; animation: blink 1s steps(1) infinite; }
+.typed[dir="ltr"] { text-align: left; }
+.ghost { height: 9px; border-radius: 5px; background: #E7EBF1; margin-top: 12px; }
+.ghost.s { width: 62%; } .ghost.m { width: 80%; }
+@keyframes blink { 50% { opacity: 0; } }
+.taskbar {
+  position: absolute; inset: auto 0 0 0; height: 11%; background: rgba(8,12,20,.72);
+  backdrop-filter: blur(10px); display: flex; align-items: center; justify-content: flex-start;
+  padding: 0 3%; gap: 10px; direction: ltr;
+}
+.taskbar .lang {
+  margin-left: auto; font: 700 clamp(10px, 1.2vw, 13px) var(--mono); color: #E6ECF5;
+  padding: 3px 8px; border-radius: 6px; background: rgba(255,255,255,.08);
+}
+.taskbar .dot { width: 18px; height: 18px; border-radius: 5px; background: rgba(255,255,255,.14); }
+.popup {
+  position: absolute; left: 50%; top: 44%; width: 34%; translate: -50% -50%;
+  opacity: 0; pointer-events: none;
+}
+.popup img { width: 100%; border-radius: 10px; box-shadow: 0 18px 40px -12px rgba(0,0,0,.6); }
+
+.keys { display: flex; align-items: center; justify-content: center; gap: 12px; margin-top: 28px; direction: ltr; }
+.key {
+  font: 700 15px var(--mono); color: var(--ink); background: var(--key); cursor: pointer;
+  border: 1px solid var(--key-edge); border-bottom-width: 5px; border-radius: 10px;
+  padding: 10px 18px 7px; min-width: 64px; transition: transform .08s, border-bottom-width .08s;
+}
+.key.wide { min-width: 110px; }
+.key.down, .key:active { transform: translateY(3px); border-bottom-width: 2px; }
+.plus { color: var(--muted); font: 700 18px var(--mono); }
+.hint { text-align: center; color: var(--muted); font-size: 14px; margin-top: 12px; }
+
+/* popup animations: enter / hold / exit compressed in one timeline */
+.popup.play { animation-duration: 1.7s; animation-timing-function: linear; animation-fill-mode: both; }
+.popup.a-soft_pop { animation-name: softPop; }
+.popup.a-float_up { animation-name: floatUp; }
+.popup.a-fade { animation-name: fade; }
+.popup.a-center_pop { animation-name: centerPop; }
+.popup.a-drop_bounce { animation-name: dropBounce; }
+.popup.a-tada { animation-name: tada; }
+.popup.a-genie { animation-name: genie; transform-origin: 50% 100%; }
+.popup.a-slide_bottom { animation-name: slideBottom; }
+@keyframes softPop {
+  0% { opacity: 0; transform: translateY(14px) scale(.92); }
+  20% { opacity: 1; transform: none; animation-timing-function: ease-in; }
+  80% { opacity: 1; transform: none; animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: translateY(-8px) scale(.97); }
+}
+@keyframes floatUp {
+  0% { opacity: 0; transform: translateY(40px); animation-timing-function: cubic-bezier(.22,1,.36,1); }
+  22% { opacity: 1; transform: none; }
+  80% { opacity: 1; transform: none; animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: translateY(-40px); }
+}
+@keyframes fade { 0%,100% { opacity: 0; } 18%,82% { opacity: 1; } }
+@keyframes centerPop {
+  0% { opacity: 0; transform: scale(.1); animation-timing-function: cubic-bezier(.34,1.56,.64,1); }
+  24% { opacity: 1; transform: scale(1); }
+  80% { opacity: 1; transform: scale(1); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: scale(.05); }
+}
+@keyframes dropBounce {
+  0% { opacity: 0; transform: translateY(-160%); animation-timing-function: ease-in; }
+  14% { opacity: 1; transform: translateY(0); animation-timing-function: ease-out; }
+  19% { transform: translateY(-14%); animation-timing-function: ease-in; }
+  24% { transform: translateY(0); animation-timing-function: ease-out; }
+  27% { transform: translateY(-4%); animation-timing-function: ease-in; }
+  30% { transform: translateY(0); }
+  80% { opacity: 1; transform: translateY(0); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: translateY(-160%); }
+}
+@keyframes tada {
+  0% { opacity: 0; transform: scale(1); }
+  5% { opacity: 1; }
+  8% { transform: scale(1.06) rotate(-6deg); }
+  14% { transform: scale(1.12) rotate(5deg); }
+  20% { transform: scale(1.1) rotate(-3deg); }
+  26% { transform: scale(1.04) rotate(1.5deg); }
+  32% { transform: scale(1) rotate(0); }
+  80% { opacity: 1; transform: scale(1); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: scale(.9); }
+}
+@keyframes genie {
+  0% { opacity: 0; transform: scale(.08, .06); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); animation-timing-function: cubic-bezier(.22,1,.36,1); }
+  24% { opacity: 1; transform: none; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); }
+  80% { opacity: 1; transform: none; clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%); animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: scale(.08, .06); clip-path: polygon(46% 0, 54% 0, 100% 100%, 0 100%); }
+}
+@keyframes slideBottom {
+  0% { opacity: 0; transform: translateY(260%); animation-timing-function: cubic-bezier(.22,1,.36,1); }
+  22% { opacity: 1; transform: none; }
+  80% { opacity: 1; transform: none; animation-timing-function: ease-in; }
+  100% { opacity: 0; transform: translateY(260%); }
+}
+
+.anims { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 18px; direction: ltr; }
+.chip {
+  font: 500 13px var(--mono); padding: 6px 12px; border-radius: 999px; cursor: pointer;
+  background: transparent; color: var(--muted); border: 1px solid var(--line);
+}
+.chip:hover { color: var(--ink); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+
+/* ---------- sections ---------- */
+section { padding: 84px 0; border-top: 1px solid var(--line); }
+.eyebrow { font: 700 13px var(--mono); color: var(--accent); letter-spacing: .5px; direction: ltr; text-align: right; }
+h2 { font-size: clamp(28px, 3.4vw, 40px); font-weight: 900; line-height: 1.35; margin: 6px 0 14px; }
+.sub { color: var(--muted); max-width: 40em; margin: 0 0 40px; }
+
+/* features */
+.features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.feature { background: var(--surface); padding: 28px 28px 26px; }
+.feature h3 { margin: 0 0 6px; font-size: 18px; font-weight: 800; }
+.feature p { margin: 0; color: var(--muted); font-size: 15.5px; line-height: 1.85; }
+.feature .k { font: 700 12px var(--mono); color: var(--accent); display: block; margin-bottom: 10px; direction: ltr; text-align: right; }
+
+/* gallery */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.tab {
+  font: 600 15px var(--font); padding: 8px 16px; border-radius: 10px; cursor: pointer;
+  background: transparent; border: 1px solid var(--line); color: var(--muted);
+}
+.tab[aria-selected="true"] { background: var(--surface); color: var(--ink); border-color: var(--accent); }
+.shot {
+  background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 14px; box-shadow: 0 30px 60px -40px rgba(16,20,28,.45);
+}
+.shot img { border-radius: 10px; width: 100%; height: auto; }
+
+/* install */
+.steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; counter-reset: s; list-style: none; padding: 0; margin: 0; }
+.steps li { counter-increment: s; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 26px; }
+.steps li::before {
+  content: counter(s, persian); display: grid; place-items: center; width: 38px; height: 38px;
+  border-radius: 10px; background: var(--accent); color: var(--accent-ink); font-weight: 900; margin-bottom: 14px;
+}
+.steps h3 { margin: 0 0 6px; font-size: 18px; }
+.steps p { margin: 0; color: var(--muted); font-size: 15.5px; }
+pre {
+  margin: 28px 0 0; background: var(--screen); color: #D7E1F0; border-radius: var(--radius);
+  padding: 22px 24px; overflow-x: auto; font: 500 14px/1.8 var(--mono); direction: ltr; text-align: left;
+}
+pre .c { color: #6F7E96; }
+
+/* footer */
+footer { border-top: 1px solid var(--line); padding: 44px 0 56px; }
+.foot { display: flex; flex-wrap: wrap; gap: 18px; justify-content: space-between; align-items: center; }
+.credit { font-size: 17px; }
+.credit a { color: var(--accent); font-weight: 800; text-decoration: none; }
+.credit a:hover { text-decoration: underline; }
+.foot nav { display: flex; gap: 18px; color: var(--muted); font-size: 15px; }
+.foot nav a { text-decoration: none; }
+.foot nav a:hover { color: var(--ink); }
+.theme-btn { background: none; border: 1px solid var(--line); color: var(--muted); border-radius: 10px; padding: 6px 12px; font: 500 14px var(--font); cursor: pointer; }
+
+@media (max-width: 920px) {
+  .hero { grid-template-columns: 1fr; gap: 40px; padding-top: 24px; }
+  .features, .steps { grid-template-columns: 1fr; }
+  .top nav { display: none; }
+}
+@media (max-width: 520px) {
+  .wrap { padding: 0 16px; }
+  section { padding: 60px 0; }
+  .key { min-width: 54px; padding: 8px 12px 6px; }
+  .key.wide { min-width: 84px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .popup.play { animation-name: fade !important; }
+  .typed .caret { animation: none; }
+  .btn { transition: none; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="#">
+      <img src="assets/app_icon.png" alt="" width="36" height="36">
+      <span>Language Flag Pop-Up <small>v9.3</small></span>
+    </a>
+    <nav aria-label="بخش‌ها">
+      <a href="#features">قابلیت‌ها</a>
+      <a href="#screens">اسکرین‌شات‌ها</a>
+      <a href="#install">نصب</a>
+      <a href="https://github.com/mr-shady/language_flag_popup">GitHub</a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="hero">
+      <div>
+        <h1>زبان کیبورد را<br><em>قبل از تایپ</em> ببینید.</h1>
+        <p class="lead">همین که زبان را با Alt+Shift عوض می‌کنید، پرچم آن برای یک لحظه روی صفحه ظاهر می‌شود. دیگر لازم نیست یک جمله‌ی کامل را با زبان اشتباه پاک کنید.</p>
+        <div class="cta">
+          <a class="btn primary" href="https://github.com/mr-shady/language_flag_popup/raw/main/LanguageFlagPopUp_Setup.exe">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19.5h14"/></svg>
+            دانلود برای ویندوز
+          </a>
+          <a class="btn" href="https://github.com/mr-shady/language_flag_popup">سورس در GitHub</a>
+        </div>
+        <div class="meta">نسخه‌ی <span class="mono">9.3.0</span> · ویندوز ۱۰ و ۱۱ · حدود ۳۴ مگابایت · رایگان و متن‌باز (MIT)</div>
+      </div>
+
+      <div class="demo">
+        <div class="screen" aria-label="پیش‌نمایش زنده">
+          <div class="window">
+            <div class="typed" id="typed" dir="rtl"><span id="typedText">سلام، امروز</span><span class="caret"></span></div>
+            <div class="ghost m"></div>
+            <div class="ghost s"></div>
+          </div>
+          <div class="popup" id="popup"><img id="flag" src="assets/iran.png" alt="پرچم زبان فعال"></div>
+          <div class="taskbar"><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="lang" id="tbLang">FA</span></div>
+        </div>
+        <div class="keys">
+          <button class="key wide" id="kAlt" type="button">Alt</button>
+          <span class="plus">+</span>
+          <button class="key wide" id="kShift" type="button">Shift</button>
+        </div>
+        <p class="hint">کلیدها را بزنید، یا روی همین صفحه Alt+Shift را فشار دهید.</p>
+        <div class="anims" id="anims" aria-label="انیمیشن پیش‌نمایش"></div>
+      </div>
+    </div>
+
+    <section id="features">
+      <div class="eyebrow">FEATURES</div>
+      <h2>کوچک، سریع، و بی‌سروصدا</h2>
+      <p class="sub">در System Tray می‌نشیند، فقط وقتی زبان عوض می‌شود دیده می‌شود، و هیچ‌وقت فوکوس پنجره‌ی شما را نمی‌دزدد.</p>
+      <div class="features">
+        <div class="feature"><span class="k">FLAG · TEXT · BOTH</span><h3>سه حالت نمایش</h3><p>پرچم با گوشه‌ی گرد و سایه‌ی نرم، متن دلخواه مثل FA و EN، یا هر دو با هم.</p></div>
+        <div class="feature"><span class="k">22 ANIMATIONS</span><h3>انیمیشن‌های روان</h3><p>از Soft Pop و Genie تا Drop Bounce. هم‌گام با نرخ تازه‌سازی مانیتور (۶۰ تا ۱۴۴ هرتز) اجرا می‌شوند.</p></div>
+        <div class="feature"><span class="k">0x409 · 0x429 · …</span><h3>هر زبانی که دارید</h3><p>زبان‌ها را با Windows Language ID اضافه کنید و برای هر کدام پرچم و متن جدا بگذارید.</p></div>
+        <div class="feature"><span class="k">9 POSITIONS</span><h3>جای دلخواه روی صفحه</h3><p>نُه موقعیت با فاصله‌ی قابل تنظیم از لبه، روی همه‌ی مانیتورها یا فقط مانیتور فعال.</p></div>
+        <div class="feature"><span class="k">PER-MONITOR DPI</span><h3>تیز روی 4K</h3><p>رندر با شفافیت واقعی و آگاه از DPI؛ لبه‌ها روی هر مقیاسی صاف و تمیزند.</p></div>
+        <div class="feature"><span class="k">~90 MS</span><h3>تشخیص سریع و دقیق</h3><p>تغییر زبان در کمتر از یک دهم ثانیه دیده می‌شود. جابه‌جا شدن بین پنجره‌ها پاپ‌آپ بی‌مورد نشان نمی‌دهد.</p></div>
+      </div>
+    </section>
+
+    <section id="screens">
+      <div class="eyebrow">SCREENSHOTS</div>
+      <h2>پنل تنظیمات</h2>
+      <p class="sub">همه‌چیز از یک پنجره تنظیم می‌شود و قبل از ذخیره، پیش‌نمایش زنده دارد.</p>
+      <div class="tabs" role="tablist" id="tabs">
+        <button class="tab" role="tab" aria-selected="true" data-img="general">عمومی</button>
+        <button class="tab" role="tab" aria-selected="false" data-img="languages">زبان‌ها</button>
+        <button class="tab" role="tab" aria-selected="false" data-img="appearance">ظاهر پاپ‌آپ</button>
+        <button class="tab" role="tab" aria-selected="false" data-img="animation">انیمیشن</button>
+        <button class="tab" role="tab" aria-selected="false" data-img="about">درباره</button>
+      </div>
+      <div class="shot" role="tabpanel"><img id="shot" src="assets/general.png" alt="پنل تنظیمات — عمومی" width="1082" height="801" loading="lazy"></div>
+    </section>
+
+    <section id="install">
+      <div class="eyebrow">INSTALL</div>
+      <h2>نصب در کمتر از یک دقیقه</h2>
+      <p class="sub">نیازی به دسترسی ادمین نیست؛ برنامه فقط برای کاربر فعلی نصب می‌شود.</p>
+      <ol class="steps">
+        <li><h3>دانلود</h3><p>فایل <span class="mono">LanguageFlagPopUp_Setup.exe</span> را از دکمه‌ی بالای صفحه بگیرید.</p></li>
+        <li><h3>نصب</h3><p>اجرایش کنید. اگر می‌خواهید با ویندوز بالا بیاید، گزینه‌ی اجرای خودکار را روشن بگذارید.</p></li>
+        <li><h3>تنظیم</h3><p>از آیکون System Tray وارد Settings شوید، حالت نمایش و انیمیشن را انتخاب کنید و Apply بزنید.</p></li>
+      </ol>
+      <pre><span class="c"># اجرا از سورس (Python 3.9+)</span>
+python -m pip install -r requirements.txt
+python language_flag_popup.pyw --settings
+
+<span class="c"># ساخت فایل اجرایی</span>
+pyinstaller --clean language_flag_popup.spec</pre>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="wrap foot">
+    <div class="credit">طراحی و توسعه توسط <a href="https://reza-nemati.ir">رضا نعمتی</a></div>
+    <nav>
+      <a href="https://github.com/mr-shady/language_flag_popup">GitHub</a>
+      <a href="https://github.com/mr-shady/language_flag_popup/blob/main/LICENSE">MIT License</a>
+      <a href="https://reza-nemati.ir">reza-nemati.ir</a>
+      <button class="theme-btn" id="themeBtn" type="button">تغییر تم</button>
+    </nav>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var langs = [
+    { code: 'FA', flag: 'assets/iran.png', dir: 'rtl', text: 'سلام، امروز' },
+    { code: 'EN', flag: 'assets/usa.png', dir: 'ltr', text: 'Hello, today' }
+  ];
+  var anims = ['soft_pop', 'genie', 'float_up', 'center_pop', 'drop_bounce', 'tada', 'slide_bottom', 'fade'];
+  var current = 0, anim = 'soft_pop';
+  var popup = document.getElementById('popup');
+  var flag = document.getElementById('flag');
+  var typed = document.getElementById('typed');
+  var typedText = document.getElementById('typedText');
+  var tbLang = document.getElementById('tbLang');
+  var kAlt = document.getElementById('kAlt'), kShift = document.getElementById('kShift');
+
+  // preload both flags so the first switch never flashes an empty frame
+  langs.forEach(function (l) { var i = new Image(); i.src = l.flag; });
+
+  var box = document.getElementById('anims');
+  anims.forEach(function (name) {
+    var b = document.createElement('button');
+    b.type = 'button'; b.className = 'chip'; b.textContent = name;
+    b.setAttribute('aria-pressed', name === anim ? 'true' : 'false');
+    b.addEventListener('click', function () {
+      anim = name;
+      box.querySelectorAll('.chip').forEach(function (c) { c.setAttribute('aria-pressed', c === b ? 'true' : 'false'); });
+      play();
+    });
+    box.appendChild(b);
+  });
+
+  function play() {
+    popup.className = 'popup';
+    void popup.offsetWidth;            // restart the CSS animation
+    popup.className = 'popup play a-' + anim;
+  }
+
+  function switchLang() {
+    current = (current + 1) % langs.length;
+    var l = langs[current];
+    flag.src = l.flag;
+    tbLang.textContent = l.code;
+    typed.setAttribute('dir', l.dir);
+    typedText.textContent = l.text;
+    play();
+  }
+
+  function press() {
+    kAlt.classList.add('down'); kShift.classList.add('down');
+    setTimeout(function () { kAlt.classList.remove('down'); kShift.classList.remove('down'); }, 140);
+    switchLang();
+  }
+  kAlt.addEventListener('click', press);
+  kShift.addEventListener('click', press);
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.key === 'Shift' && e.altKey) || (e.key === 'Alt' && e.shiftKey)) { e.preventDefault(); press(); }
+  });
+
+  // screenshot tabs
+  var shot = document.getElementById('shot');
+  document.querySelectorAll('#tabs .tab').forEach(function (t) {
+    t.addEventListener('click', function () {
+      document.querySelectorAll('#tabs .tab').forEach(function (o) { o.setAttribute('aria-selected', o === t ? 'true' : 'false'); });
+      shot.src = 'assets/' + t.dataset.img + '.png';
+      shot.alt = 'پنل تنظیمات — ' + t.textContent;
+    });
+  });
+
+  // theme toggle (remembered per browser)
+  var root = document.documentElement;
+  try { var saved = localStorage.getItem('lfp-theme'); if (saved) root.dataset.theme = saved; } catch (e) {}
+  document.getElementById('themeBtn').addEventListener('click', function () {
+    var dark = root.dataset.theme ? root.dataset.theme === 'dark' : matchMedia('(prefers-color-scheme: dark)').matches;
+    root.dataset.theme = dark ? 'light' : 'dark';
+    try { localStorage.setItem('lfp-theme', root.dataset.theme); } catch (e) {}
+  });
+
+  setTimeout(play, 500);   // greet with one popup on load
+})();
+</script>
+</body>
+</html>

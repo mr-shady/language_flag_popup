@@ -54,6 +54,31 @@ _enable_dpi_awareness()
 
 
 # ─────────────────────────────────────────────
+# FRAME TIMING  (1 ms timer resolution + DWM vblank sync for tear-free motion)
+# ─────────────────────────────────────────────
+try:
+    ctypes.windll.winmm.timeBeginPeriod(1)   # default Windows timer tick is ~15.6 ms
+except Exception:
+    pass
+
+try:
+    _DwmFlush = ctypes.windll.dwmapi.DwmFlush
+    _DwmFlush.restype = ctypes.c_long
+except Exception:
+    _DwmFlush = None
+
+
+def _wait_vblank():
+    """Block until the next desktop composition pass; False if DWM is unavailable."""
+    if _DwmFlush is None:
+        return False
+    try:
+        return _DwmFlush() == 0
+    except Exception:
+        return False
+
+
+# ─────────────────────────────────────────────
 # CONFIG
 # ─────────────────────────────────────────────
 if getattr(sys, 'frozen', False):
@@ -370,22 +395,11 @@ def _make_window_layered(hwnd):
         pass
 
 
-def _premultiplied_bgra(img):
-    """PIL RGBA -> premultiplied BGRA bytes (what UpdateLayeredWindow expects)."""
-    if img.mode != 'RGBA':
-        img = img.convert('RGBA')
-    r, g, b, a = img.split()
-    r = ImageChops.multiply(r, a)
-    g = ImageChops.multiply(g, a)
-    b = ImageChops.multiply(b, a)
-    return Image.merge('RGBA', (b, g, r, a)).tobytes('raw', 'RGBA')
-
-
 def _genie_frame(source, canvas_size, progress):
     """Return one frame of the curved bottom-centre funnel transition."""
     progress = max(0.0, min(1.0, progress))
     cw, ch = canvas_size
-    canvas = Image.new('RGBA', canvas_size, (0, 0, 0, 0))
+    canvas = Image.new(source.mode, canvas_size, (0, 0, 0, 0))
     if progress <= 0.002:
         return canvas
     bands = max(18, min(42, source.height // 10))
@@ -406,7 +420,7 @@ def _genie_frame(source, canvas_size, progress):
         strip = source.crop((0, sy0, source.width, sy1)).resize(
             (dest_w, max(1, dy1 - dy0)), RESAMPLE_BILINEAR)
         dx = final_left + (source.width - dest_w) // 2
-        canvas.alpha_composite(strip, (dx, dy0))
+        canvas.paste(strip, (dx, dy0))   # bands never overlap, so a plain copy is enough
     return canvas
 
 
@@ -415,10 +429,14 @@ class LayeredPopup:
 
     def __init__(self, root, base_img, transform_margin=0):
         self.base = base_img
+        # Premultiplied copy: resampling it avoids dark fringes on soft edges and
+        # lets each frame go straight to the DIB without a per-pixel multiply pass.
+        self.base_pm = base_img.convert('RGBA').convert('RGBa')
         bw, bh = base_img.size
         self.cw = bw + transform_margin * 2
         self.ch = bh + transform_margin * 2
         self._last_blit_key = None
+        self._last_pos = None
         self._dead = False
 
         self.win = tk.Toplevel(root)
@@ -458,23 +476,34 @@ class LayeredPopup:
             return
         self._last_blit_key = key
 
-        im = self.base
-        if scale != 1.0:
-            nw = max(1, int(round(self.base.width * scale)))
-            nh = max(1, int(round(self.base.height * scale)))
-            im = self.base.resize((nw, nh), RESAMPLE_BILINEAR)
+        im = self.base_pm
         if angle:
-            im = im.rotate(angle, resample=RESAMPLE_BILINEAR, expand=True)
+            # Scale + rotate in a single affine resample straight onto the canvas.
+            rad = math.radians(angle)
+            s = max(scale, 1e-3)
+            ca, sa = math.cos(rad) / s, math.sin(rad) / s
+            ox, oy = self.cw / 2.0, self.ch / 2.0
+            ix, iy = im.width / 2.0, im.height / 2.0
+            coeffs = (ca, -sa, ix - ca * ox + sa * oy,
+                      sa, ca, iy - sa * ox - ca * oy)
+            canvas = im.transform((self.cw, self.ch), Image.AFFINE, coeffs,
+                                  resample=RESAMPLE_BILINEAR)
+            raw = canvas.tobytes('raw', 'BGRa')
+            ctypes.memmove(self.bits, raw, len(raw))
+            return
+        if scale != 1.0:
+            nw = max(1, int(round(im.width * scale)))
+            nh = max(1, int(round(im.height * scale)))
+            # Bicubic keeps edges crisp while shrinking; bilinear is cheaper for growth.
+            im = im.resize((nw, nh), RESAMPLE_BICUBIC if scale < 1.0 else RESAMPLE_BILINEAR)
 
         if im.size == (self.cw, self.ch):
             canvas = im
         else:
-            canvas = Image.new('RGBA', (self.cw, self.ch), (0, 0, 0, 0))
-            px = (self.cw - im.width) // 2
-            py = (self.ch - im.height) // 2
-            canvas.alpha_composite(im, (px, py))
+            canvas = Image.new('RGBa', (self.cw, self.ch), (0, 0, 0, 0))
+            canvas.paste(im, ((self.cw - im.width) // 2, (self.ch - im.height) // 2))
 
-        raw = _premultiplied_bgra(canvas)
+        raw = canvas.tobytes('raw', 'BGRa')
         ctypes.memmove(self.bits, raw, len(raw))
 
     def blit_genie(self, progress):
@@ -485,19 +514,23 @@ class LayeredPopup:
             return
         self._last_blit_key = key
 
-        canvas = _genie_frame(self.base, (self.cw, self.ch), progress)
-        raw = _premultiplied_bgra(canvas)
+        canvas = _genie_frame(self.base_pm, (self.cw, self.ch), progress)
+        raw = canvas.tobytes('raw', 'BGRa')
         ctypes.memmove(self.bits, raw, len(raw))
 
     def update(self, center_x, center_y, alpha):
         if self._dead:
             return
-        x = int(center_x - self.cw // 2)
-        y = int(center_y - self.ch // 2)
+        x = int(round(center_x - self.cw / 2))
+        y = int(round(center_y - self.ch / 2))
+        a = int(round(max(0.0, min(1.0, alpha)) * 255))
+        pos = (x, y, a, self._last_blit_key)
+        if pos == self._last_pos:
+            return
+        self._last_pos = pos
         pt_dst = POINT(x, y)
         size = SIZE(self.cw, self.ch)
         pt_src = POINT(0, 0)
-        a = int(max(0.0, min(1.0, alpha)) * 255)
         blend = BLENDFUNCTION(AC_SRC_OVER, 0, a, AC_SRC_ALPHA)
         try:
             user32.UpdateLayeredWindow(
@@ -1107,7 +1140,7 @@ def _animate(popups_info, cfg, on_done):
     is_genie = anim == 'genie'
     duration = max(0.05, max(50, cfg.get('animation_duration', 350)) / 1000.0)
     show_time = cfg.get('show_time', 1.0)
-    frame_ms = 16
+    frame_ms = 1000.0 / 60
 
     def render(t, entering):
         for (p, tcx, tcy, w, h, mx, my, mw, mh) in popups_info:
@@ -1134,7 +1167,13 @@ def _animate(popups_info, cfg, on_done):
                 callback()
                 return
             render(t, entering)
-            root.after(frame_ms, step)
+            # Pace frames to the display refresh (60/120/144 Hz) so every frame is
+            # shown exactly once; fall back to a drift-free timer without DWM.
+            if _wait_vblank():
+                root.after(1, step)
+            else:
+                elapsed_ms = (time.perf_counter() - start) * 1000.0
+                root.after(max(1, int(frame_ms - elapsed_ms % frame_ms)), step)
         step()
 
     def hold():
@@ -1467,7 +1506,7 @@ class SettingsWindow:
         title_row.pack(anchor='w')
         tk.Label(title_row, text="Language Popup", font=F(15, 'bold'),
                  bg=THEME['sidebar'], fg=THEME['text']).pack(side=tk.LEFT)
-        tk.Label(title_row, text="v9.2", font=F(8, 'bold'), padx=8, pady=2,
+        tk.Label(title_row, text="v9.3", font=F(8, 'bold'), padx=8, pady=2,
                  bg=THEME['accent_dim'], fg=THEME['accent'], relief=tk.FLAT).pack(side=tk.LEFT, padx=(10, 0))
         tk.Label(copy, text="Keyboard language indicator", font=F(9),
                  bg=THEME['sidebar'], fg=THEME['muted']).pack(anchor='w', pady=(4, 0))
@@ -2102,6 +2141,7 @@ class SettingsWindow:
 # LANGUAGE DETECTION
 # ─────────────────────────────────────────────
 DEBOUNCE_TIME = 0.28
+POLL_INTERVAL = 0.03   # 3 stable samples => change reported within ~90 ms
 
 
 class LanguageChangeDetector:
@@ -2147,7 +2187,7 @@ def check_lang_change():
         try:
             current_lang, current_hwnd = get_foreground_window_info()
             if current_lang is None:
-                time.sleep(0.05)
+                time.sleep(POLL_INTERVAL)
                 continue
 
             now = time.time()
@@ -2170,7 +2210,7 @@ def check_lang_change():
                     flag_queue.put((current_lang, cfg_source))
         except Exception as e:
             debug_print(f"check_lang_change: {e}")
-        time.sleep(0.05)
+        time.sleep(POLL_INTERVAL)
 
 
 # ─────────────────────────────────────────────
